@@ -107,8 +107,8 @@ async function poll(){
     if (r.status === 204 || r.status === 202) return show(null);
     if (!r.ok) return showErr("API "+r.status);
     const j = await r.json();
-    prog = (j && j.item) ? {ms:j.progress_ms||0, dur:j.item.duration_ms||0, playing:j.is_playing, at:Date.now()} : null;
-    show(j && j.item);
+    prog = (j && j.item && j.is_playing) ? {ms:j.progress_ms||0, dur:j.item.duration_ms||0, playing:j.is_playing, at:Date.now()} : null;
+    show(j && j.item && j.is_playing ? j.item : null);
   } catch(e) { showErr("fetch: "+e.message); }
 }
 
