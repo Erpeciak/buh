@@ -9,7 +9,7 @@
   #bg{position:fixed;inset:0;background:#111 center/cover no-repeat;transition:opacity .4s}
   #shade{position:fixed;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.4) 0,rgba(0,0,0,0) 28%,rgba(0,0,0,0) 52%,rgba(0,0,0,.8) 100%)}
   #time{position:fixed;top:5vmin;left:0;right:0;text-align:center;font-size:9vmin;font-weight:800;letter-spacing:.02em;text-shadow:0 2px 14px rgba(0,0,0,.6)}
-  #info{position:fixed;left:12vmin;right:12vmin;bottom:10vmin;text-align:center;text-shadow:0 2px 12px rgba(0,0,0,.8)}
+  #info{display:none;position:fixed;left:12vmin;right:12vmin;bottom:10vmin;text-align:center;text-shadow:0 2px 12px rgba(0,0,0,.8)}
   #title{font-size:8vmin;font-weight:700;line-height:1.1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   #artist{margin-top:1.5vmin;font-size:6.5vmin;font-weight:500;display:flex;align-items:center;justify-content:center;gap:2vmin;white-space:nowrap}
   #artist span{overflow:hidden;text-overflow:ellipsis;max-width:70vmin}
@@ -93,24 +93,26 @@ async function getAccess(){
   if (access && Date.now() < expires - 30000) return access;
   const j = await tokenRequest({grant_type:"refresh_token",refresh_token:refresh,client_id:clientId});
   if (j.access_token) { access=j.access_token; expires=Date.now()+j.expires_in*1000; if (j.refresh_token) refresh=j.refresh_token; }
+  else { access=null; lastErr="token: "+(j.error_description||j.error||"?"); }
   return access;
 }
 
-let lastId = null;
+let lastId = null, lastErr = "";
+function showErr(m){ prog=null; $("info").style.display="none"; $("idle").style.display="block"; $("idle").textContent=m; }
 async function poll(){
   try {
-    const t = await getAccess(); if (!t) return;
+    const t = await getAccess(); if (!t) return showErr(lastErr);
     const r = await fetch("https://api.spotify.com/v1/me/player/currently-playing?additional_types=episode",{headers:{Authorization:"Bearer "+t}});
     if (r.status === 204 || r.status === 202) return show(null);
-    if (!r.ok) return;
+    if (!r.ok) return showErr("API "+r.status);
     const j = await r.json();
     prog = (j && j.item) ? {ms:j.progress_ms||0, dur:j.item.duration_ms||0, playing:j.is_playing, at:Date.now()} : null;
     show(j && j.item);
-  } catch(e) {}
+  } catch(e) { showErr("fetch: "+e.message); }
 }
 
 function show(item){
-  if (!item) { lastId=null; prog=null; $("bg").style.backgroundImage="none"; $("info").style.display="none"; $("idle").style.display="block"; return; }
+  if (!item) { lastId=null; prog=null; $("bg").style.backgroundImage="none"; $("info").style.display="none"; $("idle").style.display="block"; $("idle").textContent="Nic nie gra"; return; }
   $("idle").style.display="none"; $("info").style.display="block";
   if (item.id === lastId) return;
   lastId = item.id;
