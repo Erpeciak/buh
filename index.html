@@ -42,6 +42,7 @@
 const REDIRECT = location.origin + location.pathname;
 const SCOPE = "user-read-currently-playing user-read-playback-state";
 const $ = id => document.getElementById(id);
+const IDLE_IMG = "idle.gif"; // obraz/gif pokazywany, gdy nic nie gra (plik obok index.html albo pełny adres https://...)
 
 // zegar
 let prog = null;
@@ -112,7 +113,7 @@ async function poll(){
 }
 
 function show(item){
-  if (!item) { lastId=null; prog=null; $("bg").style.backgroundImage="none"; $("info").style.display="none"; $("idle").style.display="block"; $("idle").textContent="Nic nie gra"; return; }
+  if (!item) { lastId=null; prog=null; $("bg").style.backgroundImage=`url(${IDLE_IMG})`; $("info").style.display="none"; $("idle").style.display="none"; return; }
   $("idle").style.display="none"; $("info").style.display="block";
   if (item.id === lastId) return;
   lastId = item.id;
