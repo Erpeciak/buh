@@ -15,7 +15,7 @@
   #ov{filter:drop-shadow(0 0 1.2px rgba(0,0,0,.95)) drop-shadow(0 0 2px rgba(0,0,0,.9)) drop-shadow(0 0 5px rgba(0,0,0,.75))}
   :root{--c-time:#ffd166;--c-artist:#8fe3ff;--c-title:#ffffff}
   .t{fill:#fff;font-weight:700;paint-order:stroke;stroke:rgba(0,0,0,.85);stroke-width:1.4px;stroke-linejoin:round}
-  #time{fill:var(--c-time)} #artist{fill:var(--c-artist)} #title{fill:var(--c-title)}
+  #time{fill:var(--c-time)} #artist{fill:var(--c-artist)} .ttl{fill:var(--c-title)}
   #meta{display:none}
   #idle{position:fixed;bottom:14vmin;width:100%;text-align:center;font-size:5vmin;opacity:.8;display:none}
   #setup{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:2vmin;background:#111;padding:14vmin;text-align:center;font-size:3.6vmin}
@@ -31,8 +31,9 @@
     <path id="pTop"/><path id="pTitle"/><path id="pArtist"/>
   </defs>
   <text id="time" class="t" font-size="8.5" letter-spacing=".9" text-anchor="middle"><textPath id="timeTp" href="#pTop" startOffset="50%"></textPath></text>
+  <text id="meas" class="t" opacity="0" x="0" y="0">.</text>
   <g id="meta">
-    <text id="title" class="t" font-size="7.2" letter-spacing="1" text-anchor="middle"><textPath id="titleTp" href="#pTitle" startOffset="50%"></textPath></text>
+    <g id="titleG"></g>
     <text id="artist" class="t" x="50" y="57" font-size="12" font-weight="700" letter-spacing="1.4" text-anchor="middle"></text>
   </g>
 </svg>
@@ -54,7 +55,7 @@ const IDLE_IMG = "idle.gif"; // obraz/gif pokazywany, gdy nic nie gra (plik obok
 // ---- łuki, po których biegnie tekst ----
 function arcTop(r, deg){ const a=deg*Math.PI/180, x=r*Math.cos(a), y=r*Math.sin(a); return `M ${50-x} ${50-y} A ${r} ${r} 0 0 1 ${50+x} ${50-y}`; }
 function arcBottom(r, deg){ const a=deg*Math.PI/180, x=r*Math.cos(a), y=r*Math.sin(a); return `M ${50-x} ${50+y} A ${r} ${r} 0 0 0 ${50+x} ${50+y}`; }
-$("pTop").setAttribute("d", arcTop(36, 30));
+$("pTop").setAttribute("d", arcTop(40, 30));
 $("pTitle").setAttribute("d", arcBottom(42.5, 22));
 $("pArtist").setAttribute("d", arcBottom(42, 26));
 
@@ -78,7 +79,7 @@ function fitLine(textId, text, size, min, maxW){
 }
 
 // tekst łamany na kilka linii (do maxLines), wyśrodkowany pionowo; zmniejsza czcionkę dopiero, gdy się nie mieści
-function fitBlock(textId, text, size, min, maxW, maxLines){
+function fitBlock(textId, text, size, min, maxW, maxLines, cy = 55){
   const el = $(textId), NS = "http://www.w3.org/2000/svg";
   const words = text.toUpperCase().split(/\s+/).filter(Boolean);
   const measure = str => { el.textContent = str; return el.getComputedTextLength(); };
@@ -100,9 +101,54 @@ function fitBlock(textId, text, size, min, maxW, maxLines){
   if (cut) lines[lines.length-1] += "…";
   const trunc = l => { let t = l.endsWith("…") ? l.slice(0,-1) : l, out = l; while (measure(out) > maxW && t.length > 1) { t = t.slice(0,-1).trimEnd(); out = t + "…"; } return out; };
   lines = lines.map(trunc);
-  const lh = s * 1.15, y0 = 55 - (lines.length - 1) * lh / 2;
+  const lh = s * 1.15, y0 = cy - (lines.length - 1) * lh / 2;
   el.textContent = "";
   lines.forEach((l, i) => { const ts = document.createElementNS(NS, "tspan"); ts.setAttribute("x", 50); ts.setAttribute("y", y0 + i * lh); ts.textContent = l; el.appendChild(ts); });
+}
+
+// tytuł na łukach: jedna linia, a gdy się nie mieści, dwie (druga linia wyżej, na mniejszym łuku); zwraca liczbę linii
+function fitTitleArcs(text, size, min){
+  const NS = "http://www.w3.org/2000/svg", defs = document.querySelector("#ov defs"), g = $("titleG"), meas = $("meas");
+  const R = 45, ALPHA = 22, span = (180 - 2 * ALPHA) * Math.PI / 180;
+  const words = text.split(/\s+/).filter(Boolean);
+  const len = (str, s) => { meas.setAttribute("font-size", s); meas.setAttribute("letter-spacing", (s * 0.1).toFixed(2)); meas.textContent = str; return meas.getComputedTextLength(); };
+  const avail = r => r * span * 0.94;
+  const trunc = (l, s, max) => { if (len(l, s) <= max) return l; let t = l; while (t.length > 1) { t = t.slice(0, -1).trimEnd(); if (len(t + "…", s) <= max) return t + "…"; } return t; };
+  let best = null;
+  for (let s = size; s >= min - 1e-6; s -= 0.3) {
+    const lh = s * 1.15;
+    if (len(text, s) <= avail(R)) { best = { s, lines: [text] }; break; }
+    if (s <= size * 0.85 && words.length > 1) {
+      let pick = null, score = Infinity;
+      for (let i = 1; i < words.length; i++) {
+        const a = words.slice(0, i).join(" "), b = words.slice(i).join(" ");
+        const m = Math.max(len(a, s) / avail(R - lh), len(b, s) / avail(R));
+        if (m <= 1 && m < score) { score = m; pick = [a, b]; }
+      }
+      if (pick) { best = { s, lines: pick }; break; }
+    }
+  }
+  if (!best) {
+    const s = min, lh = s * 1.15;
+    let lines = text ? [text] : [""];
+    if (words.length > 1) { const mid = Math.ceil(words.length / 2); lines = [words.slice(0, mid).join(" "), words.slice(mid).join(" ")]; }
+    lines = lines.map((l, i) => trunc(l, s, avail(R - (lines.length - 1 - i) * lh)));
+    best = { s, lines };
+  }
+  g.textContent = "";
+  defs.querySelectorAll(".tp").forEach(n => n.remove());
+  const n = best.lines.length, lh = best.s * 1.15;
+  best.lines.forEach((l, i) => {
+    const r = R - (n - 1 - i) * lh;
+    const p = document.createElementNS(NS, "path");
+    p.setAttribute("id", "pT" + i); p.setAttribute("class", "tp"); p.setAttribute("d", arcBottom(r, ALPHA)); defs.appendChild(p);
+    const t = document.createElementNS(NS, "text");
+    t.setAttribute("class", "t ttl"); t.setAttribute("font-size", best.s); t.setAttribute("letter-spacing", (best.s * 0.1).toFixed(2)); t.setAttribute("text-anchor", "middle");
+    const tp = document.createElementNS(NS, "textPath");
+    tp.setAttribute("href", "#pT" + i); tp.setAttribute("startOffset", "50%"); tp.textContent = l;
+    t.appendChild(tp); g.appendChild(t);
+  });
+  return n;
 }
 
 // ---- czas utworu ----
@@ -191,8 +237,8 @@ function show(item){
 let curName = "", curArtist = "";
 function layoutText(){
   if (!curName) return;
-  fitArc("title","titleTp","pTitle", curName, 10.5, 5);
-  fitBlock("artist", curArtist, 12, 5, 70, 3);
+  const n = fitTitleArcs(curName, 10.5, 4.6);
+  fitBlock("artist", curArtist, 12, 5, 70, 3, n > 1 ? 47 : 55);
 }
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(layoutText); // przelicz po załadowaniu czcionki
 
