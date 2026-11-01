@@ -6,31 +6,32 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
   html,body{margin:0;height:100%;background:#000;overflow:hidden;font-family:"Segoe UI",system-ui,sans-serif;color:#fff}
-  #bg{position:fixed;inset:0;background:#111 center/cover no-repeat;transition:opacity .4s}
-  #shade{position:fixed;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.4) 0,rgba(0,0,0,0) 28%,rgba(0,0,0,0) 52%,rgba(0,0,0,.8) 100%)}
-  #time{position:fixed;top:5vmin;left:0;right:0;text-align:center;font-size:9vmin;font-weight:800;letter-spacing:.02em;text-shadow:0 2px 14px rgba(0,0,0,.6)}
-  #info{display:none;position:fixed;left:14vmin;right:14vmin;bottom:10vmin;text-align:center;text-shadow:0 2px 12px rgba(0,0,0,.8)}
-  #title{font-size:8vmin;font-weight:700;line-height:1.1;overflow-wrap:anywhere}
-  #artist{margin-top:1.5vmin;font-size:6.5vmin;font-weight:500;display:flex;align-items:center;justify-content:center;gap:2vmin;white-space:nowrap}
-  #artist span{overflow:hidden;text-overflow:ellipsis;max-width:58vmin}
-  #artist svg{width:7vmin;height:7vmin;flex:none}
+  #bg{position:fixed;inset:0;background:#111 center/cover no-repeat}
+  #shade{position:fixed;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.4) 0,rgba(0,0,0,0) 26%,rgba(0,0,0,0) 50%,rgba(0,0,0,.82) 100%)}
+  #ov{position:fixed;left:50%;top:50%;width:100vmin;height:100vmin;transform:translate(-50%,-50%);font-family:"Segoe UI",system-ui,sans-serif}
+  .t{fill:#fff;font-weight:700;paint-order:stroke;stroke:rgba(0,0,0,.5);stroke-width:.6px;stroke-linejoin:round}
+  #meta{display:none}
+  #idle{position:fixed;bottom:14vmin;width:100%;text-align:center;font-size:5vmin;opacity:.8;display:none}
   #setup{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:2vmin;background:#111;padding:14vmin;text-align:center;font-size:3.6vmin}
   #setup input{width:100%;padding:1.5vmin;font-size:3.6vmin;border-radius:8px;border:0}
   #setup button{padding:1.5vmin 4vmin;font-size:3.6vmin;border-radius:99px;border:0;background:#1db954;color:#000;font-weight:700;cursor:pointer}
-  #idle{position:fixed;bottom:14vmin;width:100%;text-align:center;font-size:5vmin;opacity:.7;display:none}
 </style>
 </head>
 <body>
 <div id="bg"></div><div id="shade"></div>
-<div id="time">--:--</div>
-<div id="idle">Nic nie gra</div>
-<div id="info">
-  <div id="title"></div>
-  <div id="artist">
-    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#fff"/><path d="M5.5 9.2c4.3-1.2 9.3-.9 13 1.3M6.2 12.5c3.7-1 7.7-.7 10.9 1.2M7 15.6c3-.8 6-.5 8.7 1" stroke="#000" stroke-width="1.7" stroke-linecap="round" fill="none"/></svg>
-    <span id="artistName"></span>
-  </div>
-</div>
+
+<svg id="ov" viewBox="0 0 100 100">
+  <defs>
+    <path id="pTop"/><path id="pTitle"/><path id="pArtist"/>
+  </defs>
+  <text id="time" class="t" font-size="7.5" text-anchor="middle"><textPath id="timeTp" href="#pTop" startOffset="50%"></textPath></text>
+  <g id="meta">
+    <text id="title" class="t" font-size="7.2" text-anchor="middle"><textPath id="titleTp" href="#pTitle" startOffset="50%"></textPath></text>
+    <text id="artist" class="t" font-size="5.2" font-weight="500" text-anchor="middle"><textPath id="artistTp" href="#pArtist" startOffset="50%"></textPath></text>
+  </g>
+</svg>
+
+<div id="idle"></div>
 <div id="setup">
   <div><b>Konfiguracja Spotify</b></div>
   <div>Wklej Client ID z Spotify Developer Dashboard<br>(Redirect URI: <code id="ru"></code>)</div>
@@ -44,19 +45,37 @@ const SCOPE = "user-read-currently-playing user-read-playback-state";
 const $ = id => document.getElementById(id);
 const IDLE_IMG = "idle.gif"; // obraz/gif pokazywany, gdy nic nie gra (plik obok index.html albo pełny adres https://...)
 
-// zegar
+// ---- łuki, po których biegnie tekst ----
+function arcTop(r, deg){ const a=deg*Math.PI/180, x=r*Math.cos(a), y=r*Math.sin(a); return `M ${50-x} ${50-y} A ${r} ${r} 0 0 1 ${50+x} ${50-y}`; }
+function arcBottom(r, deg){ const a=deg*Math.PI/180, x=r*Math.cos(a), y=r*Math.sin(a); return `M ${50-x} ${50+y} A ${r} ${r} 0 0 0 ${50+x} ${50+y}`; }
+$("pTop").setAttribute("d", arcTop(36, 30));
+$("pTitle").setAttribute("d", arcBottom(36, 26));
+$("pArtist").setAttribute("d", arcBottom(43.5, 30));
+
+// dopasowanie tekstu do długości łuku (zmniejsza czcionkę, a w ostateczności skraca z "…")
+function fitArc(textId, tpId, pathId, text, size, min){
+  const el = $(textId), tp = $(tpId), path = $(pathId);
+  const maxLen = path.getTotalLength() * 0.94;
+  let s = size; el.setAttribute("font-size", s);
+  tp.textContent = text;
+  while (el.getComputedTextLength() > maxLen && s > min) { s -= 0.2; el.setAttribute("font-size", s); }
+  let t = text;
+  while (el.getComputedTextLength() > maxLen && t.length > 1) { t = t.slice(0,-1); tp.textContent = t.trimEnd() + "…"; }
+}
+
+// ---- czas utworu ----
 let prog = null;
 const fmt = ms => { const s=Math.floor(ms/1000); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); };
 function tick(){
-  if(!prog){ $("time").textContent=""; return; }
+  if(!prog){ $("timeTp").textContent=""; return; }
   let ms = prog.ms + (prog.playing ? Date.now()-prog.at : 0);
   ms = Math.min(ms, prog.dur);
   if (prog.playing && ms >= prog.dur && !prog.asked) { prog.asked = true; setTimeout(poll, 300); }
-  $("time").textContent = fmt(ms)+" / "+fmt(prog.dur);
+  $("timeTp").textContent = fmt(ms)+" / "+fmt(prog.dur);
 }
 setInterval(tick,250);
 
-// pomocnicze PKCE
+// ---- logowanie PKCE ----
 const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
 function rand(n){ const a=new Uint8Array(n); crypto.getRandomValues(a); return b64url(a).slice(0,n); }
 
@@ -100,7 +119,8 @@ async function getAccess(){
 }
 
 let lastId = null, lastErr = "";
-function showErr(m){ prog=null; $("info").style.display="none"; $("idle").style.display="block"; $("idle").textContent=m; }
+function showErr(m){ prog=null; $("meta").style.display="none"; $("idle").style.display="block"; $("idle").textContent=m; }
+
 let busy = false;
 async function poll(){
   if (busy) return; busy = true;
@@ -116,23 +136,15 @@ async function poll(){
 }
 
 function show(item){
-  if (!item) { lastId=null; prog=null; $("bg").style.backgroundImage=`url(${IDLE_IMG})`; $("info").style.display="none"; $("idle").style.display="none"; return; }
-  $("idle").style.display="none"; $("info").style.display="block";
+  if (!item) { lastId=null; prog=null; $("bg").style.backgroundImage=`url(${IDLE_IMG})`; $("meta").style.display="none"; $("idle").style.display="none"; return; }
+  $("idle").style.display="none"; $("meta").style.display="inline";
   if (item.id === lastId) return;
   lastId = item.id;
   const imgs = (item.album && item.album.images) || item.images || [];
   $("bg").style.backgroundImage = imgs[0] ? `url(${imgs[0].url})` : "none";
-  $("title").textContent = item.name; setTimeout(fit, 0);
-  $("artistName").textContent = item.artists ? item.artists.map(a=>a.name).join(", ") : (item.show ? item.show.name : "");
-}
-
-function fit(){
-  const vm = Math.min(innerWidth, innerHeight)/100;
-  const t = $("title"), a = $("artistName");
-  let fs = 8*vm; t.style.fontSize = fs+"px";
-  while (t.scrollHeight > fs*2.4 && fs > 3.8*vm) { fs -= 0.3*vm; t.style.fontSize = fs+"px"; }
-  let af = 6.5*vm; a.style.fontSize = af+"px";
-  while (a.scrollWidth > a.clientWidth && af > 3.5*vm) { af -= 0.3*vm; a.style.fontSize = af+"px"; }
+  const artist = item.artists ? item.artists.map(a=>a.name).join(", ") : (item.show ? item.show.name : "");
+  fitArc("title","titleTp","pTitle", item.name, 7.2, 3.4);
+  fitArc("artist","artistTp","pArtist", artist, 5.2, 3.2);
 }
 
 boot();
