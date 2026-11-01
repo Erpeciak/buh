@@ -9,10 +9,10 @@
   #bg{position:fixed;inset:0;background:#111 center/cover no-repeat;transition:opacity .4s}
   #shade{position:fixed;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.4) 0,rgba(0,0,0,0) 28%,rgba(0,0,0,0) 52%,rgba(0,0,0,.8) 100%)}
   #time{position:fixed;top:5vmin;left:0;right:0;text-align:center;font-size:9vmin;font-weight:800;letter-spacing:.02em;text-shadow:0 2px 14px rgba(0,0,0,.6)}
-  #info{display:none;position:fixed;left:12vmin;right:12vmin;bottom:10vmin;text-align:center;text-shadow:0 2px 12px rgba(0,0,0,.8)}
-  #title{font-size:8vmin;font-weight:700;line-height:1.1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  #info{display:none;position:fixed;left:14vmin;right:14vmin;bottom:10vmin;text-align:center;text-shadow:0 2px 12px rgba(0,0,0,.8)}
+  #title{font-size:8vmin;font-weight:700;line-height:1.1;overflow-wrap:anywhere}
   #artist{margin-top:1.5vmin;font-size:6.5vmin;font-weight:500;display:flex;align-items:center;justify-content:center;gap:2vmin;white-space:nowrap}
-  #artist span{overflow:hidden;text-overflow:ellipsis;max-width:70vmin}
+  #artist span{overflow:hidden;text-overflow:ellipsis;max-width:58vmin}
   #artist svg{width:7vmin;height:7vmin;flex:none}
   #setup{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:2vmin;background:#111;padding:14vmin;text-align:center;font-size:3.6vmin}
   #setup input{width:100%;padding:1.5vmin;font-size:3.6vmin;border-radius:8px;border:0}
@@ -51,6 +51,7 @@ function tick(){
   if(!prog){ $("time").textContent=""; return; }
   let ms = prog.ms + (prog.playing ? Date.now()-prog.at : 0);
   ms = Math.min(ms, prog.dur);
+  if (prog.playing && ms >= prog.dur && !prog.asked) { prog.asked = true; setTimeout(poll, 300); }
   $("time").textContent = fmt(ms)+" / "+fmt(prog.dur);
 }
 setInterval(tick,250);
@@ -87,7 +88,7 @@ async function boot(){
     $("login").onclick = () => { const v=$("cid").value.trim(); if(v) startLogin(v); };
     return;
   }
-  poll(); setInterval(poll, 2000);
+  poll(); setInterval(poll, 1000);
 }
 
 async function getAccess(){
@@ -100,7 +101,9 @@ async function getAccess(){
 
 let lastId = null, lastErr = "";
 function showErr(m){ prog=null; $("info").style.display="none"; $("idle").style.display="block"; $("idle").textContent=m; }
+let busy = false;
 async function poll(){
+  if (busy) return; busy = true;
   try {
     const t = await getAccess(); if (!t) return showErr(lastErr);
     const r = await fetch("https://api.spotify.com/v1/me/player/currently-playing?additional_types=episode",{headers:{Authorization:"Bearer "+t}});
@@ -109,7 +112,7 @@ async function poll(){
     const j = await r.json();
     prog = (j && j.item && j.is_playing) ? {ms:j.progress_ms||0, dur:j.item.duration_ms||0, playing:j.is_playing, at:Date.now()} : null;
     show(j && j.item && j.is_playing ? j.item : null);
-  } catch(e) { showErr("fetch: "+e.message); }
+  } catch(e) { showErr("fetch: "+e.message); } finally { busy = false; }
 }
 
 function show(item){
@@ -119,8 +122,17 @@ function show(item){
   lastId = item.id;
   const imgs = (item.album && item.album.images) || item.images || [];
   $("bg").style.backgroundImage = imgs[0] ? `url(${imgs[0].url})` : "none";
-  $("title").textContent = item.name;
+  $("title").textContent = item.name; setTimeout(fit, 0);
   $("artistName").textContent = item.artists ? item.artists.map(a=>a.name).join(", ") : (item.show ? item.show.name : "");
+}
+
+function fit(){
+  const vm = Math.min(innerWidth, innerHeight)/100;
+  const t = $("title"), a = $("artistName");
+  let fs = 8*vm; t.style.fontSize = fs+"px";
+  while (t.scrollHeight > fs*2.4 && fs > 3.8*vm) { fs -= 0.3*vm; t.style.fontSize = fs+"px"; }
+  let af = 6.5*vm; a.style.fontSize = af+"px";
+  while (a.scrollWidth > a.clientWidth && af > 3.5*vm) { af -= 0.3*vm; a.style.fontSize = af+"px"; }
 }
 
 boot();
