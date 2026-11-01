@@ -75,6 +75,33 @@ function fitLine(textId, text, size, min, maxW){
   while (el.getComputedTextLength() > maxW && t.length > 1) { t = t.slice(0,-1); el.textContent = t.trimEnd() + "…"; }
 }
 
+// tekst łamany na kilka linii (do maxLines), wyśrodkowany pionowo; zmniejsza czcionkę dopiero, gdy się nie mieści
+function fitBlock(textId, text, size, min, maxW, maxLines){
+  const el = $(textId), NS = "http://www.w3.org/2000/svg";
+  const words = text.toUpperCase().split(/\s+/).filter(Boolean);
+  const measure = str => { el.textContent = str; return el.getComputedTextLength(); };
+  let s = size, lines = [];
+  for (;;) {
+    el.setAttribute("font-size", s);
+    lines = []; let cur = "";
+    for (const w of words) {
+      const t = cur ? cur + " " + w : w;
+      if (!cur || measure(t) <= maxW) cur = t; else { lines.push(cur); cur = w; }
+    }
+    if (cur) lines.push(cur);
+    if ((lines.length <= maxLines && lines.every(l => measure(l) <= maxW)) || s <= min) break;
+    s -= 0.4;
+  }
+  const cut = lines.length > maxLines;
+  lines = lines.slice(0, maxLines);
+  if (cut) lines[lines.length-1] += "…";
+  const trunc = l => { let t = l.endsWith("…") ? l.slice(0,-1) : l, out = l; while (measure(out) > maxW && t.length > 1) { t = t.slice(0,-1).trimEnd(); out = t + "…"; } return out; };
+  lines = lines.map(trunc);
+  const lh = s * 1.15, y0 = 55 - (lines.length - 1) * lh / 2;
+  el.textContent = "";
+  lines.forEach((l, i) => { const ts = document.createElementNS(NS, "tspan"); ts.setAttribute("x", 50); ts.setAttribute("y", y0 + i * lh); ts.textContent = l; el.appendChild(ts); });
+}
+
 // ---- czas utworu ----
 let prog = null;
 const fmt = ms => { const s=Math.floor(ms/1000); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); };
@@ -162,7 +189,7 @@ let curName = "", curArtist = "";
 function layoutText(){
   if (!curName) return;
   fitArc("title","titleTp","pTitle", curName, 10.5, 5);
-  fitLine("artist", curArtist, 12, 5, 76);
+  fitBlock("artist", curArtist, 12, 5, 70, 3);
 }
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(layoutText); // przelicz po załadowaniu czcionki
 
