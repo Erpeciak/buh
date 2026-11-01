@@ -238,7 +238,7 @@ let curName = "", curArtist = "";
 function layoutText(){
   if (!curName) return;
   const n = fitTitleArcs(curName, 10.5, 4.6);
-  fitBlock("artist", curArtist, 12, 5, 70, 3, n > 1 ? 47 : 55);
+  fitBlock("artist", curArtist, 8.5, 4.2, 62, 3, n > 1 ? 43 : 48);
 }
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(layoutText); // przelicz po załadowaniu czcionki
 
