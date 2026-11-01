@@ -3,12 +3,15 @@
 <head>
 <meta charset="utf-8">
 <title>Now Playing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
   html,body{margin:0;height:100%;background:#000;overflow:hidden;font-family:"Segoe UI",system-ui,sans-serif;color:#fff}
   #bg{position:fixed;inset:0;background:#111 center/cover no-repeat}
   #shade{position:fixed;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.4) 0,rgba(0,0,0,0) 26%,rgba(0,0,0,0) 38%,rgba(0,0,0,.6) 62%,rgba(0,0,0,.92) 100%)}
-  #ov{position:fixed;left:50%;top:50%;width:100vmin;height:100vmin;transform:translate(-50%,-50%);font-family:"Segoe UI",system-ui,sans-serif}
+  #ov{position:fixed;left:50%;top:50%;width:100vmin;height:100vmin;transform:translate(-50%,-50%);font-family:"Barlow Semi Condensed","Segoe UI",system-ui,sans-serif}
   #ov{filter:drop-shadow(0 0 1.2px rgba(0,0,0,.95)) drop-shadow(0 0 3px rgba(0,0,0,.7))}
   .t{fill:#fff;font-weight:800}
   #meta{display:none}
@@ -152,9 +155,16 @@ function show(item){
   const imgs = (item.album && item.album.images) || item.images || [];
   $("bg").style.backgroundImage = imgs[0] ? `url(${imgs[0].url})` : "none";
   const artist = item.artists ? item.artists.map(a=>a.name).join(", ") : (item.show ? item.show.name : "");
-  fitArc("title","titleTp","pTitle", item.name, 8.2, 4.6);
-  fitLine("artist", artist, 5.4, 3.6, 58);
+  curName = item.name; curArtist = artist; layoutText();
 }
+
+let curName = "", curArtist = "";
+function layoutText(){
+  if (!curName) return;
+  fitArc("title","titleTp","pTitle", curName, 9.4, 5);
+  fitLine("artist", curArtist, 6.4, 4, 58);
+}
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(layoutText); // przelicz po załadowaniu czcionki
 
 boot();
 </script>
