@@ -224,8 +224,8 @@ async function poll(){
 }
 
 function show(item){
-  if (!item) { lastId=null; prog=null; $("bg").style.backgroundImage=`url(${IDLE_IMG})`; $("meta").style.display="none"; $("idle").style.display="none"; return; }
-  $("idle").style.display="none"; $("meta").style.display="inline";
+  if (!item) { lastId=null; prog=null; $("bg").style.backgroundImage=`url(${IDLE_IMG})`; $("shade").style.display="none"; $("meta").style.display="none"; $("idle").style.display="none"; return; }
+  $("idle").style.display="none"; $("meta").style.display="inline"; $("shade").style.display="block";
   if (item.id === lastId) return;
   lastId = item.id;
   const imgs = (item.album && item.album.images) || item.images || [];
