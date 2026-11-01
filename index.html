@@ -7,9 +7,10 @@
 <style>
   html,body{margin:0;height:100%;background:#000;overflow:hidden;font-family:"Segoe UI",system-ui,sans-serif;color:#fff}
   #bg{position:fixed;inset:0;background:#111 center/cover no-repeat}
-  #shade{position:fixed;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.4) 0,rgba(0,0,0,0) 26%,rgba(0,0,0,0) 50%,rgba(0,0,0,.82) 100%)}
+  #shade{position:fixed;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.4) 0,rgba(0,0,0,0) 26%,rgba(0,0,0,0) 38%,rgba(0,0,0,.6) 62%,rgba(0,0,0,.92) 100%)}
   #ov{position:fixed;left:50%;top:50%;width:100vmin;height:100vmin;transform:translate(-50%,-50%);font-family:"Segoe UI",system-ui,sans-serif}
-  .t{fill:#fff;font-weight:700;paint-order:stroke;stroke:rgba(0,0,0,.5);stroke-width:.6px;stroke-linejoin:round}
+  #ov{filter:drop-shadow(0 0 1.2px rgba(0,0,0,.95)) drop-shadow(0 0 3px rgba(0,0,0,.7))}
+  .t{fill:#fff;font-weight:800}
   #meta{display:none}
   #idle{position:fixed;bottom:14vmin;width:100%;text-align:center;font-size:5vmin;opacity:.8;display:none}
   #setup{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:2vmin;background:#111;padding:14vmin;text-align:center;font-size:3.6vmin}
@@ -27,7 +28,7 @@
   <text id="time" class="t" font-size="7.5" text-anchor="middle"><textPath id="timeTp" href="#pTop" startOffset="50%"></textPath></text>
   <g id="meta">
     <text id="title" class="t" font-size="7.2" text-anchor="middle"><textPath id="titleTp" href="#pTitle" startOffset="50%"></textPath></text>
-    <text id="artist" class="t" font-size="5.2" font-weight="500" text-anchor="middle"><textPath id="artistTp" href="#pArtist" startOffset="50%"></textPath></text>
+    <text id="artist" class="t" font-size="6.2" font-weight="600" text-anchor="middle"><textPath id="artistTp" href="#pArtist" startOffset="50%"></textPath></text>
   </g>
 </svg>
 
@@ -49,8 +50,8 @@ const IDLE_IMG = "idle.gif"; // obraz/gif pokazywany, gdy nic nie gra (plik obok
 function arcTop(r, deg){ const a=deg*Math.PI/180, x=r*Math.cos(a), y=r*Math.sin(a); return `M ${50-x} ${50-y} A ${r} ${r} 0 0 1 ${50+x} ${50-y}`; }
 function arcBottom(r, deg){ const a=deg*Math.PI/180, x=r*Math.cos(a), y=r*Math.sin(a); return `M ${50-x} ${50+y} A ${r} ${r} 0 0 0 ${50+x} ${50+y}`; }
 $("pTop").setAttribute("d", arcTop(36, 30));
-$("pTitle").setAttribute("d", arcBottom(36, 26));
-$("pArtist").setAttribute("d", arcBottom(43.5, 30));
+$("pTitle").setAttribute("d", arcBottom(34, 22));
+$("pArtist").setAttribute("d", arcBottom(42, 26));
 
 // dopasowanie tekstu do długości łuku (zmniejsza czcionkę, a w ostateczności skraca z "…")
 function fitArc(textId, tpId, pathId, text, size, min){
@@ -143,8 +144,8 @@ function show(item){
   const imgs = (item.album && item.album.images) || item.images || [];
   $("bg").style.backgroundImage = imgs[0] ? `url(${imgs[0].url})` : "none";
   const artist = item.artists ? item.artists.map(a=>a.name).join(", ") : (item.show ? item.show.name : "");
-  fitArc("title","titleTp","pTitle", item.name, 7.2, 3.4);
-  fitArc("artist","artistTp","pArtist", artist, 5.2, 3.2);
+  fitArc("title","titleTp","pTitle", item.name, 8.2, 4.6);
+  fitArc("artist","artistTp","pArtist", artist, 6.2, 4);
 }
 
 boot();
